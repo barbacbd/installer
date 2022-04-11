@@ -364,8 +364,8 @@ func ValidateForProvisioning(session *session.Session, ic *types.InstallConfig, 
 	if ic.AWS.HostedZone != "" {
 		zoneName := ic.AWS.HostedZone
 		zonePath := field.NewPath("aws", "hostedZone")
-		zoneOutput, errors := getHostedZone(client, zonePath, zoneName)
-		if len(errors) > 0 {
+		zoneOutput, err := client.GetHostedZone(context.TODO(), zoneName)
+		if err != nil {
 			return field.ErrorList{
 				field.Invalid(zonePath, zoneName, "cannot find hosted zone"),
 			}.ToAggregate()

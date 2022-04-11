@@ -749,6 +749,8 @@ func TestValidateForProvisioning(t *testing.T) {
 			ic.BaseDomain = test.baseDomain
 			ic.AWS.Region = validRegion
 
+			fmt.Println(ic.AWS.HostedZone)
+
 			meta := &Metadata{
 				availabilityZones: validAvailZones(),
 				privateSubnets:    validPrivateSubnets(),
@@ -761,20 +763,12 @@ func TestValidateForProvisioning(t *testing.T) {
 				meta.vpc = test.hostedZone
 			}
 
-			session, err := GetSession()
-			if err != nil {
-				assert.Error(t, err)
+			err := ValidateForProvisioning(route53Client, ic, meta)
+			if test.expectedErr == "" {
+				assert.NoError(t, err)
 			} else {
-
-				meta.session = session
-				err = ValidateForProvisioning(route53Client, ic, meta)
-
-				if test.expectedErr == "" {
-					assert.NoError(t, err)
-				} else {
-					if assert.Error(t, err) {
-						assert.Regexp(t, test.expectedErr, err.Error())
-					}
+				if assert.Error(t, err) {
+					assert.Regexp(t, test.expectedErr, err.Error())
 				}
 			}
 
