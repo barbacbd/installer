@@ -51,6 +51,7 @@ func (c *Client) GetHostedZone(ctx context.Context, hostedZone string) (*route53
 	return hostedZoneOutput, nil
 }
 
+// ValidateZoneRecords Attempts to validate each of the candidate HostedZones against the Config
 func (c *Client) ValidateZoneRecords(ctx context.Context, zone *route53.HostedZone, zoneName string, zonePath *field.Path, ic *types.InstallConfig) field.ErrorList {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -120,6 +121,7 @@ func isHostedZoneDomainParentOfClusterDomain(hostedZone *route53.HostedZone, dot
 	return strings.HasSuffix(dottedClusterDomain, "."+*hostedZone.Name)
 }
 
+// GetBaseDomain Gets the Domain Zone with the matching domain name from the session
 func (c *Client) GetBaseDomain(ctx context.Context, baseDomainName string) (*route53.HostedZone, error) {
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer cancel()

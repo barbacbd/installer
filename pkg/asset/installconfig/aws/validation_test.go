@@ -155,13 +155,13 @@ func createBaseDomainHostedZone() route53.HostedZone {
 
 func createValidHostedZone() route53.GetHostedZoneOutput {
 	ptrValidNameServers := []*string{}
-	for i, _ := range validNameServers {
+	for i := range validNameServers {
 		ptrValidNameServers = append(ptrValidNameServers, &validNameServers[i])
 	}
 
 	validDelegationSet := route53.DelegationSet{CallerReference: &validCallerRef, Id: &validDSId, NameServers: ptrValidNameServers}
 	validHostedZone := route53.HostedZone{CallerReference: &validCallerRef, Id: &validDSId, Name: &validHostedZoneName}
-	validVPCs := []*route53.VPC{&route53.VPC{VPCId: &validHostedZoneName, VPCRegion: &validRegion}}
+	validVPCs := []*route53.VPC{{VPCId: &validHostedZoneName, VPCRegion: &validRegion}}
 
 	return route53.GetHostedZoneOutput{
 		DelegationSet: &validDelegationSet,
