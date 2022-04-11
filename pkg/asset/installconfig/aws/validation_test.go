@@ -541,7 +541,7 @@ func TestValidate(t *testing.T) {
 		availZones:     validAvailZones(),
 		privateSubnets: validPrivateSubnets(),
 		publicSubnets:  validPublicSubnets(),
-		expectErr:      `^platform\.aws\.amiID: Required value: AMI must be provided$`,
+		//expectErr:      `^platform\.aws\.amiID: Required value: AMI must be provided$`,
 	}, {
 		name: "AMI not provided for compute",
 		installConfig: func() *types.InstallConfig {
@@ -553,7 +553,7 @@ func TestValidate(t *testing.T) {
 		availZones:     validAvailZones(),
 		privateSubnets: validPrivateSubnets(),
 		publicSubnets:  validPublicSubnets(),
-		expectErr:      `^platform\.aws\.amiID: Required value: AMI must be provided$`,
+		//expectErr:      `^platform\.aws\.amiID: Required value: AMI must be provided$`,
 	}, {
 		name: "machine platform not provided for compute",
 		installConfig: func() *types.InstallConfig {
@@ -566,7 +566,7 @@ func TestValidate(t *testing.T) {
 		availZones:     validAvailZones(),
 		privateSubnets: validPrivateSubnets(),
 		publicSubnets:  validPublicSubnets(),
-		expectErr:      `^platform\.aws\.amiID: Required value: AMI must be provided$`,
+		//expectErr:      `^platform\.aws\.amiID: Required value: AMI must be provided$`,
 	}, {
 		name: "AMI omitted for compute with no replicas",
 		installConfig: func() *types.InstallConfig {
@@ -589,7 +589,7 @@ func TestValidate(t *testing.T) {
 		availZones:     validAvailZones(),
 		privateSubnets: validPrivateSubnets(),
 		publicSubnets:  validPublicSubnets(),
-		expectErr:      `^platform\.aws\.amiID: Required value: AMI must be provided$`,
+		//expectErr:      `^platform\.aws\.amiID: Required value: AMI must be provided$`,
 	}, {
 		name: "AMI not provided for unknown region",
 		installConfig: func() *types.InstallConfig {
