@@ -1,6 +1,8 @@
 package validation
 
 import (
+	"context"
+	"fmt"
 	"os"
 
 	"sort"
@@ -10,6 +12,7 @@ import (
 	"github.com/openshift/installer/pkg/types/gcp"
 
 	"github.com/openshift/installer/pkg/validate"
+	"google.golang.org/api/compute/v1"
 )
 
 var (
@@ -56,6 +59,39 @@ var (
 		return validValues
 	}()
 )
+
+func validateRegion(p *gcp.Platform) error {
+	ctx := context.Background()
+	service, err := compute.NewService(ctx)
+	if err != nil {
+		return err
+	}
+
+	regionsService := NewRegionsService(service)
+
+	regionsListCall := regionsService.List(p.ProjectID)
+	if regionsListCall == nil {
+		return fmt.Errorf("invalid RegionsListCall")
+	}
+
+	regionsList, err := regionsListCall.Do()
+	if err != nil {
+		return err
+	}
+
+	found := false
+	for region := range regionsList.Items {
+		found = region.Name == p.Region
+		if found {
+			break
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("invalid region: %s", p.Region)
+	}
+	return nil
+}
 
 // ValidatePlatform checks that the specified platform is valid.
 func ValidatePlatform(p *gcp.Platform, fldPath *field.Path) field.ErrorList {
