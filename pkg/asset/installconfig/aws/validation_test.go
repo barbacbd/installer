@@ -541,7 +541,7 @@ func TestValidate(t *testing.T) {
 		availZones:     validAvailZones(),
 		privateSubnets: validPrivateSubnets(),
 		publicSubnets:  validPublicSubnets(),
-		//expectErr:      `^platform\.aws\.amiID: Required value: AMI must be provided$`,
+		expectErr:      `^platform\.aws\.amiID: Required value: AMI must be provided$`,
 	}, {
 		name: "AMI not provided for compute",
 		installConfig: func() *types.InstallConfig {
@@ -553,7 +553,7 @@ func TestValidate(t *testing.T) {
 		availZones:     validAvailZones(),
 		privateSubnets: validPrivateSubnets(),
 		publicSubnets:  validPublicSubnets(),
-		//expectErr:      `^platform\.aws\.amiID: Required value: AMI must be provided$`,
+		expectErr:      `^platform\.aws\.amiID: Required value: AMI must be provided$`,
 	}, {
 		name: "machine platform not provided for compute",
 		installConfig: func() *types.InstallConfig {
@@ -566,7 +566,7 @@ func TestValidate(t *testing.T) {
 		availZones:     validAvailZones(),
 		privateSubnets: validPrivateSubnets(),
 		publicSubnets:  validPublicSubnets(),
-		//expectErr:      `^platform\.aws\.amiID: Required value: AMI must be provided$`,
+		expectErr:      `^platform\.aws\.amiID: Required value: AMI must be provided$`,
 	}, {
 		name: "AMI omitted for compute with no replicas",
 		installConfig: func() *types.InstallConfig {
@@ -589,7 +589,7 @@ func TestValidate(t *testing.T) {
 		availZones:     validAvailZones(),
 		privateSubnets: validPrivateSubnets(),
 		publicSubnets:  validPublicSubnets(),
-		//expectErr:      `^platform\.aws\.amiID: Required value: AMI must be provided$`,
+		expectErr:      `^platform\.aws\.amiID: Required value: AMI must be provided$`,
 	}, {
 		name: "AMI not provided for unknown region",
 		installConfig: func() *types.InstallConfig {
@@ -726,19 +726,19 @@ func TestValidateForProvisioning(t *testing.T) {
 	route53Client.EXPECT().GetHostedZone(gomock.Any(), validHostedZoneName).Return(&validHostedZoneOutput, nil)
 	route53Client.EXPECT().ValidateZoneRecords(gomock.Any(), gomock.Any(), validHostedZoneName, gomock.Any(), gomock.Any()).Return(field.ErrorList{})
 
-	route53Client.EXPECT().GetBaseDomain(gomock.Any(), "").Return(nil, fmt.Errorf("Invalid value: \"\": cannot find base domain")).AnyTimes()
+	route53Client.EXPECT().GetBaseDomain(gomock.Any(), "").Return(nil, fmt.Errorf("invalid value: \"\": cannot find base domain")).AnyTimes()
 
-	route53Client.EXPECT().GetBaseDomain(gomock.Any(), "invalid-base-domain").Return(nil, fmt.Errorf("Invalid value: \"invalid-base-domain\": cannot find base domain"))
+	route53Client.EXPECT().GetBaseDomain(gomock.Any(), "invalid-base-domain").Return(nil, fmt.Errorf("invalid value: \"invalid-base-domain\": cannot find base domain"))
 
 	route53Client.EXPECT().GetBaseDomain(gomock.Any(), validDomainName).Return(&validDomainOutput, nil)
 	route53Client.EXPECT().ValidateZoneRecords(gomock.Any(), gomock.Any(), validDomainName, gomock.Any(), gomock.Any()).Return(field.ErrorList{})
 
-	route53Client.EXPECT().GetHostedZone(gomock.Any(), "invalid-hosted-zone").Return(nil, fmt.Errorf("Invalid value: \"invalid-hosted-zone\": cannot find hosted zone"))
+	route53Client.EXPECT().GetHostedZone(gomock.Any(), "invalid-hosted-zone").Return(nil, fmt.Errorf("invalid value: \"invalid-hosted-zone\": cannot find hosted zone"))
 
 	route53Client.EXPECT().GetHostedZone(gomock.Any(), validHostedZoneName).Return(&validHostedZoneOutput, nil)
 	route53Client.EXPECT().ValidateZoneRecords(gomock.Any(), gomock.Any(), validHostedZoneName, gomock.Any(), gomock.Any()).Return(field.ErrorList{})
 
-	route53Client.EXPECT().GetHostedZone(gomock.Any(), "invalid-hosted-zone").Return(nil, fmt.Errorf("Invalid value: \"invalid-hosted-zone\": cannot find hosted zone"))
+	route53Client.EXPECT().GetHostedZone(gomock.Any(), "invalid-hosted-zone").Return(nil, fmt.Errorf("invalid value: \"invalid-hosted-zone\": cannot find hosted zone"))
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {

@@ -385,8 +385,6 @@ func ValidateForProvisioning(session *session.Session, ic *types.InstallConfig, 
 				field.Invalid(zonePath, zoneName, "cannot find base domain"),
 			}.ToAggregate()
 		}
-
-		zone = baseDomainOutput
 	}
 
 	if errors = validateZoneRecords(client, zone, zoneName, zonePath, ic); len(errors) > 0 {
