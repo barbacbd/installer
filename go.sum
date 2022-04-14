@@ -308,8 +308,8 @@ github.com/coreos/ignition/v2 v2.9.0/go.mod h1:A5lFFzA2/zvZQPVEvI1lR5WPLWRb7KZ7Q
 github.com/coreos/pkg v0.0.0-20160727233714-3ac0863d7acf/go.mod h1:E3G3o1h8I7cfcXa63jLwjI0eiQQMgzzUDFVpN/nH/eA=
 github.com/coreos/pkg v0.0.0-20180108230652-97fdf19511ea/go.mod h1:E3G3o1h8I7cfcXa63jLwjI0eiQQMgzzUDFVpN/nH/eA=
 github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f/go.mod h1:E3G3o1h8I7cfcXa63jLwjI0eiQQMgzzUDFVpN/nH/eA=
-github.com/coreos/stream-metadata-go v0.1.3 h1:i/mUQBANlYirNAU4ybH6x/SCuc/Rh6uiopph6XZhROk=
-github.com/coreos/stream-metadata-go v0.1.3/go.mod h1:zxVoWUDB0H8+tZRhTs0LeLeR/QdmBsuo7FN1oOBrWTE=
+github.com/coreos/stream-metadata-go v0.1.8 h1:EbLlLia+Ekuqgh8nF4NNFs0jUqmhUbN4mWd1O8u8TQE=
+github.com/coreos/stream-metadata-go v0.1.8/go.mod h1:RTjQyHgO/G37oJ3qnqYK6Z4TPZ5EsaabOtfMjVXmgko=
 github.com/coreos/vcontext v0.0.0-20190529201340-22b159166068/go.mod h1:E+6hug9bFSe0KZ2ZAzr8M9F5JlArJjv5D1JS7KSkPKE=
 github.com/coreos/vcontext v0.0.0-20191017033345-260217907eb5/go.mod h1:E+6hug9bFSe0KZ2ZAzr8M9F5JlArJjv5D1JS7KSkPKE=
 github.com/coreos/vcontext v0.0.0-20201120045928-b0e13dab675c h1:jA28WeORitsxGFVWhyWB06sAG2HbLHPQuHwDydhU2CQ=
@@ -766,8 +766,6 @@ github.com/google/pprof v0.0.0-20201203190320-1bf35d6f28c2/go.mod h1:kpwsk12EmLe
 github.com/google/pprof v0.0.0-20210122040257-d980be63207e/go.mod h1:kpwsk12EmLew5upagYY7GY0pfYCcupk39gWOCRROcvE=
 github.com/google/pprof v0.0.0-20210226084205-cbba55b83ad5/go.mod h1:kpwsk12EmLew5upagYY7GY0pfYCcupk39gWOCRROcvE=
 github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm40UhjYkI=
-github.com/google/renameio v1.0.0 h1:xhp2CnJmgQmpJU4RY8chagahUq5mbPPAbiSQstKpVMA=
-github.com/google/renameio v1.0.0/go.mod h1:t/HQoYBZSsWSNK35C6CO/TpPLDVWvxOHboWUAweKUpk=
 github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510/go.mod h1:pupxD2MaaD3pAXIBCelhxNneeOaAeabZDe5s4K6zSpQ=
 github.com/google/uuid v0.0.0-20170306145142-6a5e28554805/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/google/uuid v1.0.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
@@ -1192,8 +1190,8 @@ github.com/openshift/api v0.0.0-20211209135129-c58d9f695577/go.mod h1:DoslCwtqUp
 github.com/openshift/api v0.0.0-20211215120111-7c47a5f63470/go.mod h1:F/eU6jgr6Q2VhMu1mSpMmygxAELd7+BUxs3NHZ25jV4=
 github.com/openshift/api v0.0.0-20211217221424-8779abfbd571/go.mod h1:F/eU6jgr6Q2VhMu1mSpMmygxAELd7+BUxs3NHZ25jV4=
 github.com/openshift/api v0.0.0-20220204103739-31ffd77a8f02/go.mod h1:F/eU6jgr6Q2VhMu1mSpMmygxAELd7+BUxs3NHZ25jV4=
-github.com/openshift/api v0.0.0-20220325173635-8107b7a38e53 h1:WpOfczPbuY5llRH94DJRsGTsgm7d8iAA2b7m0+YXAqI=
-github.com/openshift/api v0.0.0-20220325173635-8107b7a38e53/go.mod h1:F/eU6jgr6Q2VhMu1mSpMmygxAELd7+BUxs3NHZ25jV4=
+github.com/openshift/api v0.0.0-20220404140913-04e1813ebb11 h1:lNq43y5YhxBTf+AD7CpHEKiW7hi/4OQ1VlOPH3CpoMg=
+github.com/openshift/api v0.0.0-20220404140913-04e1813ebb11/go.mod h1:F/eU6jgr6Q2VhMu1mSpMmygxAELd7+BUxs3NHZ25jV4=
 github.com/openshift/baremetal-operator v0.0.0-20220128094204-28771f489634 h1:HMxwhxQKSamgM3RpvbUwUKrnD39fEAWrEYaueTHVRmY=
 github.com/openshift/baremetal-operator v0.0.0-20220128094204-28771f489634/go.mod h1:fKoRJ8B07os5e+LFLvhFSS2g8nTODZW/J5jKw4dsQ18=
 github.com/openshift/baremetal-operator/apis v0.0.0-20220128094204-28771f489634 h1:TfLz0GbuVWt0bKNK+71JeYHIAemjcnE1fAVgqMgw2Ac=

@@ -14,6 +14,7 @@ import (
 	libvirtprovider "github.com/openshift/cluster-api-provider-libvirt/pkg/apis/libvirtproviderconfig/v1beta1"
 	ovirtprovider "github.com/openshift/cluster-api-provider-ovirt/pkg/apis/ovirtprovider/v1beta1"
 	nutanixprovider "github.com/openshift/machine-api-provider-nutanix/pkg/apis/nutanixprovider/v1beta1"
+	powervsprovider "github.com/openshift/machine-api-provider-powervs/pkg/apis/powervsprovider/v1alpha1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	awsprovider "sigs.k8s.io/cluster-api-provider-aws/pkg/apis/awsprovider/v1beta1"
@@ -28,6 +29,7 @@ import (
 	"github.com/openshift/installer/pkg/asset/ignition/machine"
 	"github.com/openshift/installer/pkg/asset/installconfig"
 	awsconfig "github.com/openshift/installer/pkg/asset/installconfig/aws"
+	aztypes "github.com/openshift/installer/pkg/asset/installconfig/azure"
 	gcpconfig "github.com/openshift/installer/pkg/asset/installconfig/gcp"
 	ovirtconfig "github.com/openshift/installer/pkg/asset/installconfig/ovirt"
 	vsphereconfig "github.com/openshift/installer/pkg/asset/installconfig/vsphere"
@@ -47,6 +49,7 @@ import (
 	nutanixtfvars "github.com/openshift/installer/pkg/tfvars/nutanix"
 	openstacktfvars "github.com/openshift/installer/pkg/tfvars/openstack"
 	ovirttfvars "github.com/openshift/installer/pkg/tfvars/ovirt"
+	powervstfvars "github.com/openshift/installer/pkg/tfvars/powervs"
 	vspheretfvars "github.com/openshift/installer/pkg/tfvars/vsphere"
 	"github.com/openshift/installer/pkg/types"
 	"github.com/openshift/installer/pkg/types/alibabacloud"
@@ -60,6 +63,7 @@ import (
 	"github.com/openshift/installer/pkg/types/nutanix"
 	"github.com/openshift/installer/pkg/types/openstack"
 	"github.com/openshift/installer/pkg/types/ovirt"
+	"github.com/openshift/installer/pkg/types/powervs"
 	"github.com/openshift/installer/pkg/types/vsphere"
 )
 
@@ -302,7 +306,6 @@ func (t *TerraformVariables) Generate(parents asset.Parents) error {
 		if err != nil {
 			return err
 		}
-
 		auth := azuretfvars.Auth{
 			SubscriptionID: session.Credentials.SubscriptionID,
 			ClientID:       session.Credentials.ClientID,
@@ -324,6 +327,12 @@ func (t *TerraformVariables) Generate(parents asset.Parents) error {
 		workerConfigs := make([]*machinev1beta1.AzureMachineProviderSpec, len(workers))
 		for i, w := range workers {
 			workerConfigs[i] = w.Spec.Template.Spec.ProviderSpec.Value.Object.(*machinev1beta1.AzureMachineProviderSpec)
+		}
+		client := aztypes.NewClient(session)
+		hyperVGeneration, err := client.GetHyperVGenerationVersion(context.TODO(), masterConfigs[0].VMSize,
+			masterConfigs[0].OSDisk.ManagedDisk.StorageAccountType, masterConfigs[0].Location)
+		if err != nil {
+			return err
 		}
 
 		preexistingnetwork := installConfig.Config.Azure.VirtualNetwork != ""
@@ -355,6 +364,7 @@ func (t *TerraformVariables) Generate(parents asset.Parents) error {
 				OutboundType:                    installConfig.Config.Azure.OutboundType,
 				BootstrapIgnStub:                bootstrapIgnStub,
 				BootstrapIgnitionURLPlaceholder: bootstrapIgnURLPlaceholder,
+				HyperVGeneration:                hyperVGeneration,
 			},
 		)
 		if err != nil {
@@ -676,6 +686,51 @@ func (t *TerraformVariables) Generate(parents asset.Parents) error {
 			Filename: TfPlatformVarsFileName,
 			Data:     data,
 		})
+	case powervs.Name:
+		client, err := installConfig.PowerVS.Client()
+		if err != nil {
+			return err
+		}
+
+		masters, err := mastersAsset.Machines()
+		if err != nil {
+			return err
+		}
+
+		// Get CISInstanceCRN from InstallConfig metadata
+		crn, err := installConfig.PowerVS.CISInstanceCRN(ctx)
+		if err != nil {
+			return err
+		}
+
+		masterConfigs := make([]*powervsprovider.PowerVSMachineProviderConfig, len(masters))
+		for i, m := range masters {
+			masterConfigs[i] = m.Spec.ProviderSpec.Value.Object.(*powervsprovider.PowerVSMachineProviderConfig)
+		}
+
+		data, err = powervstfvars.TFVars(
+			powervstfvars.TFVarsSources{
+				MasterConfigs:        masterConfigs,
+				Region:               installConfig.Config.Platform.PowerVS.Region,
+				Zone:                 installConfig.Config.Platform.PowerVS.Zone,
+				APIKey:               client.APIKey,
+				SSHKey:               installConfig.Config.SSHKey,
+				PowerVSResourceGroup: installConfig.Config.PowerVS.PowerVSResourceGroup,
+				ImageBucketFileName:  string(*rhcosImage),
+				NetworkName:          installConfig.Config.PowerVS.PVSNetworkName,
+				CISInstanceCRN:       crn,
+				VPCSubnetName:        installConfig.Config.PowerVS.Subnets[0],
+				VPCName:              installConfig.Config.PowerVS.VPC,
+			},
+		)
+		if err != nil {
+			return errors.Wrapf(err, "failed to get %s Terraform variables", platform)
+		}
+		t.FileList = append(t.FileList, &asset.File{
+			Filename: TfPlatformVarsFileName,
+			Data:     data,
+		})
+
 	case vsphere.Name:
 		controlPlanes, err := mastersAsset.Machines()
 		if err != nil {
