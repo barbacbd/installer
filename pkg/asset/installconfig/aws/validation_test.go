@@ -2,12 +2,16 @@ package aws
 
 import (
 	"context"
+	"fmt"
+	"github.com/golang/mock/gomock"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/service/route53"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/utils/pointer"
 
+	"github.com/openshift/installer/pkg/asset/installconfig/aws/mock"
 	"github.com/openshift/installer/pkg/ipnet"
 	"github.com/openshift/installer/pkg/types"
 	"github.com/openshift/installer/pkg/types/aws"
@@ -693,20 +697,20 @@ func TestValidateForProvisioning(t *testing.T) {
 	}, {
 		name:        "external publish strategy no hosted zone valid base domain",
 		publishType: types.ExternalPublishingStrategy,
-		baseDomain:  "valid-base-domain",
-	}, {
-		name:        "internal publish strategy valid hosted zone",
-		publishType: types.InternalPublishingStrategy,
-		hostedZone:  "valid-private-subnet-a",
+		baseDomain:  validDomainName,
+		//}, {
+		//	name:        "internal publish strategy valid hosted zone",
+		//	publishType: types.InternalPublishingStrategy,
+		//	hostedZone:  validHostedZoneName,
 	}, {
 		name:        "internal publish strategy invalid hosted zone",
 		publishType: types.InternalPublishingStrategy,
 		hostedZone:  "invalid-hosted-zone",
 		expectedErr: "aws.hostedZone: Invalid value: \"invalid-hosted-zone\": cannot find hosted zone",
-	}, {
-		name:        "external publish strategy valid hosted zone",
-		publishType: types.ExternalPublishingStrategy,
-		hostedZone:  "valid-private-subnet-a",
+		//}, {
+		//	name:        "external publish strategy valid hosted zone",
+		//	publishType: types.ExternalPublishingStrategy,
+		//	hostedZone:  validHostedZoneName,
 	}, {
 		name:        "external publish strategy invalid hosted zone",
 		publishType: types.ExternalPublishingStrategy,
@@ -720,23 +724,23 @@ func TestValidateForProvisioning(t *testing.T) {
 
 	route53Client := mock.NewMockAPI(mockCtrl)
 
-	validHostedZoneOutput := createValidHostedZone()
+	//validHostedZoneOutput := createValidHostedZone()
 	validDomainOutput := createBaseDomainHostedZone()
-
-	route53Client.EXPECT().GetHostedZone(gomock.Any(), validHostedZoneName).Return(&validHostedZoneOutput, nil)
-	route53Client.EXPECT().ValidateZoneRecords(gomock.Any(), gomock.Any(), validHostedZoneName, gomock.Any(), gomock.Any()).Return(field.ErrorList{})
 
 	route53Client.EXPECT().GetBaseDomain(gomock.Any(), "").Return(nil, fmt.Errorf("invalid value: \"\": cannot find base domain")).AnyTimes()
 
 	route53Client.EXPECT().GetBaseDomain(gomock.Any(), "invalid-base-domain").Return(nil, fmt.Errorf("invalid value: \"invalid-base-domain\": cannot find base domain"))
 
 	route53Client.EXPECT().GetBaseDomain(gomock.Any(), validDomainName).Return(&validDomainOutput, nil)
-	route53Client.EXPECT().ValidateZoneRecords(gomock.Any(), gomock.Any(), validDomainName, gomock.Any(), gomock.Any()).Return(field.ErrorList{})
+	route53Client.EXPECT().ValidateZoneRecords(gomock.Any(), &validDomainOutput, gomock.Any(), gomock.Any(), gomock.Any()).Return(field.ErrorList{})
+
+	//route53Client.EXPECT().GetHostedZone(gomock.Any(), validHostedZoneName).Return(&validHostedZoneOutput, nil)
+	//route53Client.EXPECT().ValidateZoneRecords(gomock.Any(), gomock.Any(), validHostedZoneName, gomock.Any(), gomock.Any()).Return(field.ErrorList{})
 
 	route53Client.EXPECT().GetHostedZone(gomock.Any(), "invalid-hosted-zone").Return(nil, fmt.Errorf("invalid value: \"invalid-hosted-zone\": cannot find hosted zone"))
 
-	route53Client.EXPECT().GetHostedZone(gomock.Any(), validHostedZoneName).Return(&validHostedZoneOutput, nil)
-	route53Client.EXPECT().ValidateZoneRecords(gomock.Any(), gomock.Any(), validHostedZoneName, gomock.Any(), gomock.Any()).Return(field.ErrorList{})
+	//route53Client.EXPECT().GetHostedZone(gomock.Any(), validHostedZoneName).Return(&validHostedZoneOutput, nil)
+	//route53Client.EXPECT().ValidateZoneRecords(gomock.Any(), gomock.Any(), validHostedZoneName, gomock.Any(), gomock.Any()).Return(field.ErrorList{})
 
 	route53Client.EXPECT().GetHostedZone(gomock.Any(), "invalid-hosted-zone").Return(nil, fmt.Errorf("invalid value: \"invalid-hosted-zone\": cannot find hosted zone"))
 
@@ -748,8 +752,6 @@ func TestValidateForProvisioning(t *testing.T) {
 			ic.AWS.HostedZone = test.hostedZone
 			ic.BaseDomain = test.baseDomain
 			ic.AWS.Region = validRegion
-
-			fmt.Println(ic.AWS.HostedZone)
 
 			meta := &Metadata{
 				availabilityZones: validAvailZones(),
@@ -775,4 +777,3 @@ func TestValidateForProvisioning(t *testing.T) {
 		})
 	}
 }
-

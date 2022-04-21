@@ -394,7 +394,6 @@ func ValidateForProvisioning(client API, ic *types.InstallConfig, metadata *Meta
 	return allErrs.ToAggregate()
 }
 
-
 func validateHostedZone(hostedZoneOutput *route53.GetHostedZoneOutput, hostedZonePath *field.Path, hostedZoneName string, metadata *Metadata) field.ErrorList {
 	allErrs := field.ErrorList{}
 

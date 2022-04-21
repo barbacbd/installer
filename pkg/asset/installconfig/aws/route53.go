@@ -46,7 +46,7 @@ func (c *Client) GetHostedZone(ctx context.Context, hostedZone string) (*route53
 	// validate that the hosted zone exists
 	hostedZoneOutput, err := r53.GetHostedZone(&route53.GetHostedZoneInput{Id: aws.String(hostedZone)})
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "could not get hosted zone: %s", hostedZone)
 	}
 	return hostedZoneOutput, nil
 }
@@ -128,7 +128,7 @@ func (c *Client) GetBaseDomain(ctx context.Context, baseDomainName string) (*rou
 
 	baseDomainZone, err := GetPublicZone(c.ssn, baseDomainName)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "could not find public zone: %s", baseDomainName)
 	}
 	return baseDomainZone, nil
 }
