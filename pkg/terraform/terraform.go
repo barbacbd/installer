@@ -3,13 +3,12 @@ package terraform
 import (
 	"context"
 	"fmt"
-	"os"
-	"path"
-	"path/filepath"
-
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"os"
+	"path"
+	"path/filepath"
 
 	"github.com/openshift/installer/pkg/asset"
 	"github.com/openshift/installer/pkg/infrastructure"
@@ -62,6 +61,12 @@ func (p *Provider) Provision(dir string, vars []*asset.File) ([]*asset.File, err
 		vars = append(vars, outputs)
 		fileList = append(fileList, outputs)
 		fileList = append(fileList, stateFile)
+
+		// TODO: Below should only happen when the file is correct
+		_, extErr := stage.ExtractLBConfig(dir, terraformDirPath, outputs, vars[0])
+		if extErr != nil {
+			return fileList, fmt.Errorf("failed to extract load balancer information: %w", err)
+		}
 	}
 	return fileList, nil
 }

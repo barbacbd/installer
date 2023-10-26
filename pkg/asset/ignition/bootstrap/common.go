@@ -24,6 +24,7 @@ import (
 	utilsnet "k8s.io/utils/net"
 
 	configv1 "github.com/openshift/api/config/v1"
+	"github.com/openshift/installer/cmd/openshift-install/command"
 	"github.com/openshift/installer/data"
 	"github.com/openshift/installer/pkg/asset"
 	"github.com/openshift/installer/pkg/asset/ignition"
@@ -32,6 +33,7 @@ import (
 	mcign "github.com/openshift/installer/pkg/asset/ignition/machine"
 	"github.com/openshift/installer/pkg/asset/installconfig"
 	"github.com/openshift/installer/pkg/asset/kubeconfig"
+	"github.com/openshift/installer/pkg/asset/lbconfig"
 	"github.com/openshift/installer/pkg/asset/machines"
 	"github.com/openshift/installer/pkg/asset/manifests"
 	"github.com/openshift/installer/pkg/asset/releaseimage"
@@ -209,6 +211,22 @@ func (a *Common) generateConfig(dependencies asset.Parents, templateData *bootst
 	}
 
 	a.addParentFiles(dependencies)
+
+	// TODO: if installConfig.platform.UserConfiguredDNS == Enabled
+	lbConfigPath := fmt.Sprintf("%s/%s", command.RootOpts.Dir, lbconfig.ConfigName)
+	if _, err := os.Stat(lbConfigPath); err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("failed to find %s: %w", lbConfigPath, err)
+		}
+	} else {
+		lbConfigContents, err := os.ReadFile(lbConfigPath)
+		if err != nil {
+			return fmt.Errorf("failed to read %s: %w", lbConfigPath, err)
+		}
+		lbPath := fmt.Sprintf("/opt/openshift/manifests/%s", lbconfig.ConfigName)
+		a.Config.Storage.Files = replaceOrAppend(a.Config.Storage.Files, ignition.FileFromBytes(lbPath, "root", 420, lbConfigContents))
+		os.Remove(lbConfigPath)
+	}
 
 	a.Config.Passwd.Users = append(
 		a.Config.Passwd.Users,
