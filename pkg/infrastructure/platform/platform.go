@@ -11,6 +11,7 @@ import (
 	awsinfra "github.com/openshift/installer/pkg/infrastructure/aws"
 	awscapi "github.com/openshift/installer/pkg/infrastructure/aws/clusterapi"
 	"github.com/openshift/installer/pkg/infrastructure/clusterapi"
+	gcpcapi "github.com/openshift/installer/pkg/infrastructure/gcp/clusterapi"
 	"github.com/openshift/installer/pkg/terraform"
 	"github.com/openshift/installer/pkg/terraform/stages/alibabacloud"
 	"github.com/openshift/installer/pkg/terraform/stages/aws"
@@ -61,6 +62,9 @@ func ProviderForPlatform(platform string, fg featuregates.FeatureGate) (infrastr
 	case baremetaltypes.Name:
 		return terraform.InitializeProvider(baremetal.PlatformStages), nil
 	case gcptypes.Name:
+		if fg.Enabled(configv1.FeatureGateClusterAPIInstall) {
+			return clusterapi.InitializeProvider(gcpcapi.Provider{}), nil
+		}
 		return terraform.InitializeProvider(gcp.PlatformStages), nil
 	case ibmcloudtypes.Name:
 		return terraform.InitializeProvider(ibmcloud.PlatformStages), nil
