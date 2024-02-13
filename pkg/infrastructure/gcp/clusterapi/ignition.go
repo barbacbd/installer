@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/openshift/installer/pkg/asset/manifests/capiutils"
 	"github.com/openshift/installer/pkg/infrastructure/clusterapi"
+	"github.com/sirupsen/logrus"
 	capg "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
@@ -35,7 +36,8 @@ func EditIgnition(ctx context.Context, in clusterapi.IgnitionInput) ([]byte, err
 	ctx, cancel := context.WithTimeout(ctx, time.Minute*1)
 	defer cancel()
 
-	if in.InstallConfig.Config.GCP.UserProvisionedDNS != gcp.UserProvisionedDNSEnabled {
+	if in.InstallConfig.Config.GCP.UserProvisionedDNS == gcp.UserProvisionedDNSEnabled {
+		logrus.Warnf("Editing ignition - user provisioned DNS enabled")
 		gcpCluster := &capg.GCPCluster{}
 		key := client.ObjectKey{
 			Name:      in.InfraID,
@@ -55,15 +57,17 @@ func EditIgnition(ctx context.Context, in clusterapi.IgnitionInput) ([]byte, err
 			return nil, fmt.Errorf("failed to unmarshal bootstrap ignition: %w", err)
 		}
 
-		apiIntIPAddress, err := createInternalLBAddress(ctx, in)
+		apiIntIPAddress, err := getInternalLBAddress(ctx, in.InstallConfig.Config.GCP.ProjectID, in.InstallConfig.Config.GCP.Region, getApiAddressName(in.InfraID))
 		if err != nil {
-			return nil, fmt.Errorf("failed to create internal load balancer address: %w", err)
+			return nil, fmt.Errorf("failed to create the internal load balancer address: %w", err)
 		}
 
 		err = addLoadBalancersToInfra(gcp.Name, ignData, []string{apiIPAddress}, []string{apiIntIPAddress})
 		if err != nil {
 			return nil, fmt.Errorf("failed to add load balancers to ignition config: %w", err)
 		}
+
+		logrus.Warnf("Post ignition editing: %+v", ignData)
 
 		editedIgnBytes, err := json.Marshal(ignData)
 		if err != nil {

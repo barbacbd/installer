@@ -112,7 +112,7 @@ func getInternalLBAddress(ctx context.Context, project, region, name string) (st
 }
 
 // createInternalLBAddress creates a static ip address for the internal load balancer.
-func createInternalLBAddress(ctx context.Context, in clusterapi.IgnitionInput) (string, error) {
+func createInternalLBAddress(ctx context.Context, in clusterapi.InfraReadyInput) (string, error) {
 	name := getApiAddressName(in.InfraID)
 
 	// TODO: Find the self link for a subnet from the in.Client
@@ -138,9 +138,13 @@ func createInternalLBAddress(ctx context.Context, in clusterapi.IgnitionInput) (
 	defer cancel()
 
 	// TODO: Do we need a child context ?
-	_, err = service.Addresses.Insert(in.InstallConfig.Config.GCP.ProjectID, in.InstallConfig.Config.GCP.Region, addr).Context(ctx).Do()
+	op, err := service.Addresses.Insert(in.InstallConfig.Config.GCP.ProjectID, in.InstallConfig.Config.GCP.Region, addr).Context(ctx).Do()
 	if err != nil {
 		return "", fmt.Errorf("failed to create internal compute address: %w", err)
+	}
+
+	if err := WaitForOperationRegional(ctx, in.InstallConfig.Config.GCP.ProjectID, in.InstallConfig.Config.GCP.Region, op); err != nil {
+		return "", fmt.Errorf("failed to wait for resource creation: %w", err)
 	}
 
 	ipAddress, err := getInternalLBAddress(ctx, in.InstallConfig.Config.GCP.ProjectID, in.InstallConfig.Config.GCP.Region, name)
@@ -155,7 +159,8 @@ func createInternalLBAddress(ctx context.Context, in clusterapi.IgnitionInput) (
 		UnhealthyThreshold: 3,
 		CheckIntervalSec:   2,
 		TimeoutSec:         2,
-		HttpHealthCheck: &compute.HTTPHealthCheck{
+		Type:               "HTTPS",
+		HttpsHealthCheck: &compute.HTTPSHealthCheck{
 			Port:        6443,
 			RequestPath: "/readyz",
 		},

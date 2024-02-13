@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/sirupsen/logrus"
+	"os"
 	"time"
 
 	ignutil "github.com/coreos/ignition/v2/config/util"
@@ -35,15 +37,16 @@ func (p Provider) PreProvision(ctx context.Context, in clusterapi.PreProvisionIn
 func (p Provider) Ignition(ctx context.Context, in clusterapi.IgnitionInput) ([]byte, error) {
 	// Create the bucket and presigned url. The url is generated using a known/expected name so that the
 	// url can be retrieved from the api by this name.
-
+	logrus.Warn("ignition!!!!")
 	ctx, cancel := context.WithTimeout(ctx, time.Minute*2)
 	defer cancel()
 
+	logrus.Warn("Provision bootstrap storage ...")
 	url, err := ProvisionBootstrapStorage(ctx, in.InstallConfig, in.InfraID)
 	if err != nil {
 		return nil, fmt.Errorf("ignition failed to provision storage: %w", err)
 	}
-
+	logrus.Warn("Editing Ignition")
 	editedIgnitionBytes, err := EditIgnition(ctx, in)
 	if err != nil {
 		return nil, fmt.Errorf("failed to edit bootstrap ignition: %w", err)
@@ -70,6 +73,8 @@ func (p Provider) Ignition(ctx context.Context, in clusterapi.IgnitionInput) ([]
 		},
 	}
 
+	os.Exit(1)
+
 	ignShimBytes, err := json.Marshal(ign)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal ignition shim: %w", err)
@@ -90,7 +95,7 @@ func (p Provider) InfraReady(ctx context.Context, in clusterapi.InfraReadyInput)
 
 	// public load balancer is created by CAPG. The health check for this load balancer is also created by
 	// the CAPG.
-	apiIPAddress := *gcpCluster.Status.Network.APIServerAddress
+	apiIPAddress := gcpCluster.Spec.ControlPlaneEndpoint.Host
 
 	// Currently, the internal/private load balancer is not created by CAPG. The load balancer will be created
 	// by the installer for now
@@ -98,9 +103,9 @@ func (p Provider) InfraReady(ctx context.Context, in clusterapi.InfraReadyInput)
 	// https://github.com/kubernetes-sigs/cluster-api-provider-gcp/issues/903
 	// Create the public (optional) and private load balancer static ip addresses
 	// TODO: Do we then need to setup a subnet for internal load balancing ?
-	apiIntIPAddress, err := getInternalLBAddress(ctx, in.InstallConfig.Config.GCP.ProjectID, in.InstallConfig.Config.GCP.Region, getApiAddressName(in.InfraID))
+	apiIntIPAddress, err := createInternalLBAddress(ctx, in)
 	if err != nil {
-		return fmt.Errorf("failed to create the internal load balancer address: %w", err)
+		return fmt.Errorf("failed to create internal load balancer address: %w", err)
 	}
 
 	if in.InstallConfig.Config.GCP.UserProvisionedDNS != gcptypes.UserProvisionedDNSEnabled {
@@ -113,6 +118,7 @@ func (p Provider) InfraReady(ctx context.Context, in clusterapi.InfraReadyInput)
 		if err := createPrivateManagedZone(ctx, in.InstallConfig, in.InfraID, *gcpCluster.Status.Network.SelfLink); err != nil {
 			return fmt.Errorf("failed to create the private managed zone: %w", err)
 		}
+		logrus.Warnf("API IP Address: %s, API Int IP Address: %s", apiIPAddress, apiIntIPAddress)
 		// Create the public (optional) and private dns records
 		if err := createDNSRecords(ctx, in.InstallConfig, in.InfraID, apiIPAddress, apiIntIPAddress); err != nil {
 			return fmt.Errorf("failed to create DNS records: %w", err)

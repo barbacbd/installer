@@ -24,7 +24,12 @@ func getDNSZoneName(ctx context.Context, ic *installconfig.InstallConfig, isPubl
 	cctx, ccancel := context.WithTimeout(ctx, time.Minute*1)
 	defer ccancel()
 
-	zone, err := client.GetDNSZone(cctx, ic.Config.GCP.ProjectID, ic.Config.ClusterDomain(), isPublic)
+	domain := ic.Config.ClusterDomain()
+	if isPublic {
+		domain = ic.Config.BaseDomain
+	}
+
+	zone, err := client.GetDNSZone(cctx, ic.Config.GCP.ProjectID, domain, isPublic)
 	if err != nil {
 		return "", fmt.Errorf("failed to get dns zone name: %w", err)
 	}
