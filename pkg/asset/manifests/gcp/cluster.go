@@ -1,10 +1,14 @@
 package gcp
 
 import (
+	"context"
 	"fmt"
+	"github.com/sirupsen/logrus"
+	"google.golang.org/api/option"
 	"net"
 
 	"github.com/apparentlymart/go-cidr/cidr"
+	"google.golang.org/api/compute/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -14,6 +18,7 @@ import (
 
 	"github.com/openshift/installer/pkg/asset"
 	"github.com/openshift/installer/pkg/asset/installconfig"
+	gcpic "github.com/openshift/installer/pkg/asset/installconfig/gcp"
 	"github.com/openshift/installer/pkg/asset/manifests/capiutils"
 	gcpconsts "github.com/openshift/installer/pkg/constants/gcp"
 	"github.com/openshift/installer/pkg/types/gcp"
@@ -33,26 +38,42 @@ func GenerateClusterAssets(installConfig *installconfig.InstallConfig, clusterID
 		networkName = installConfig.Config.GCP.Network
 	}
 
-	masterSubnet := gcp.DefaultSubnetName(clusterID.InfraID, "master")
+	controlPlaneSubnetName := gcp.DefaultSubnetName(clusterID.InfraID, "master")
+	controlPlaneSubnetCidr := ""
 	if installConfig.Config.GCP.ControlPlaneSubnet != "" {
-		masterSubnet = installConfig.Config.GCP.ControlPlaneSubnet
+		controlPlaneSubnetName = installConfig.Config.GCP.ControlPlaneSubnet
+
+		controlPlaneSubnet, err := getSubnet(installConfig.Config.GCP.NetworkProjectID, installConfig.Config.GCP.Region, controlPlaneSubnetName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get control plane subnet: %w", err)
+		}
+		// IpCidr is the IPv4 version, the IPv6 version can be accessed as well
+		controlPlaneSubnetCidr = controlPlaneSubnet.IpCidrRange
 	}
 
-	master := capg.SubnetSpec{
-		Name:        masterSubnet,
-		CidrBlock:   "",
+	controlPlane := capg.SubnetSpec{
+		Name:        controlPlaneSubnetName,
+		CidrBlock:   controlPlaneSubnetCidr,
 		Description: ptr.To(description),
 		Region:      installConfig.Config.GCP.Region,
 	}
 
-	workerSubnet := gcp.DefaultSubnetName(clusterID.InfraID, "worker")
+	workerSubnetName := gcp.DefaultSubnetName(clusterID.InfraID, "worker")
+	workerSubnetCidr := ""
 	if installConfig.Config.GCP.ComputeSubnet != "" {
-		workerSubnet = installConfig.Config.GCP.ComputeSubnet
+		workerSubnetName = installConfig.Config.GCP.ComputeSubnet
+
+		workerSubnet, err := getSubnet(installConfig.Config.GCP.NetworkProjectID, installConfig.Config.GCP.Region, workerSubnetName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get worker subnet: %w", err)
+		}
+		// IpCidr is the IPv4 version, the IPv6 version can be accessed as well
+		workerSubnetCidr = workerSubnet.IpCidrRange
 	}
 
 	worker := capg.SubnetSpec{
-		Name:        workerSubnet,
-		CidrBlock:   "",
+		Name:        workerSubnetName,
+		CidrBlock:   workerSubnetCidr,
 		Description: ptr.To(description),
 		Region:      installConfig.Config.GCP.Region,
 	}
@@ -79,7 +100,7 @@ func GenerateClusterAssets(installConfig *installconfig.InstallConfig, clusterID
 		if err != nil {
 			return nil, fmt.Errorf("failed to create the master subnet %w", err)
 		}
-		master.CidrBlock = masterCIDR.String()
+		controlPlane.CidrBlock = masterCIDR.String()
 	}
 
 	if installConfig.Config.GCP.ComputeSubnet == "" {
@@ -90,7 +111,7 @@ func GenerateClusterAssets(installConfig *installconfig.InstallConfig, clusterID
 		worker.CidrBlock = workerCIDR.String()
 	}
 
-	subnets := []capg.SubnetSpec{master, worker}
+	subnets := []capg.SubnetSpec{controlPlane, worker}
 	// Subnets should never be auto created, even in shared VPC installs
 	autoCreateSubnets := false
 
@@ -111,8 +132,6 @@ func GenerateClusterAssets(installConfig *installconfig.InstallConfig, clusterID
 			Region:               installConfig.Config.GCP.Region,
 			ControlPlaneEndpoint: clusterv1.APIEndpoint{Port: 6443},
 			Network: capg.NetworkSpec{
-				// TODO: Need a network project for installs where the network resources will exist in another
-				// project such as shared vpc installs
 				Name:                  ptr.To(networkName),
 				Subnets:               subnets,
 				AutoCreateSubnetworks: ptr.To(autoCreateSubnets),
@@ -125,6 +144,11 @@ func GenerateClusterAssets(installConfig *installconfig.InstallConfig, clusterID
 		},
 	}
 	gcpCluster.SetGroupVersionKind(capg.GroupVersion.WithKind("GCPCluster"))
+
+	// Set the network project during shared vpc installs
+	if installConfig.Config.GCP.NetworkProjectID != "" {
+		gcpCluster.Spec.Network.HostProject = ptr.To(installConfig.Config.GCP.NetworkProjectID)
+	}
 
 	manifests = append(manifests, &asset.RuntimeFile{
 		Object: gcpCluster,
@@ -181,4 +205,30 @@ func findFailureDomains(installConfig *installconfig.InstallConfig) []string {
 	}
 
 	return zones.UnsortedList()
+}
+
+// getSubnet will find a subnet in a project by the name. The matching subnet structure will be returned if
+// one is found.
+func getSubnet(project, region, subnetName string) (*compute.Subnetwork, error) {
+	ctx := context.Background()
+
+	ssn, err := gcpic.GetSession(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get session: %w", err)
+	}
+
+	computeService, err := compute.NewService(ctx, option.WithCredentials(ssn.Credentials))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create compute service: %w", err)
+	}
+
+	subnetService := compute.NewSubnetworksService(computeService)
+	subnet, err := subnetService.Get(project, region, subnetName).Context(ctx).Do()
+	if err != nil {
+		return nil, fmt.Errorf("failed to find subnet %s: %w", subnetName, err)
+	} else if subnet == nil {
+		return nil, fmt.Errorf("subnet %s is empty", subnetName)
+	}
+
+	return subnet, nil
 }
