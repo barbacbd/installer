@@ -2,6 +2,8 @@
 package gcp
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 
 	compute "google.golang.org/api/compute/v1"
@@ -13,6 +15,7 @@ import (
 
 	"github.com/openshift/installer/pkg/asset"
 	"github.com/openshift/installer/pkg/asset/installconfig"
+	gcpconfig "github.com/openshift/installer/pkg/asset/installconfig/gcp"
 	gcpconsts "github.com/openshift/installer/pkg/constants/gcp"
 	"github.com/openshift/installer/pkg/types"
 	gcptypes "github.com/openshift/installer/pkg/types/gcp"
@@ -48,7 +51,10 @@ func GenerateMachines(installConfig *installconfig.InstallConfig, infraID string
 	// Create GCP and CAPI machines for all master replicas in pool
 	for idx := int64(0); idx < total; idx++ {
 		name := fmt.Sprintf("%s-%s-%d", infraID, pool.Name, idx)
-		gcpMachine := createGCPMachine(name, installConfig, infraID, mpool, imageName)
+		gcpMachine, err := createGCPMachine(name, installConfig, infraID, mpool, imageName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create control plane (%d): %w", idx, err)
+		}
 
 		result = append(result, &asset.RuntimeFile{
 			File:   asset.File{Filename: fmt.Sprintf("10_inframachine_%s.yaml", gcpMachine.Name)},
@@ -82,7 +88,10 @@ func GenerateBootstrapMachines(name string, installConfig *installconfig.Install
 	mpool := pool.Platform.GCP
 
 	// Create one GCP and CAPI machine for bootstrap
-	bootstrapGCPMachine := createGCPMachine(name, installConfig, infraID, mpool, imageName)
+	bootstrapGCPMachine, err := createGCPMachine(name, installConfig, infraID, mpool, imageName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create bootstrap machine: %w", err)
+	}
 
 	// Identify this as a bootstrap machine
 	bootstrapGCPMachine.Labels["install.openshift.io/bootstrap"] = ""
@@ -106,7 +115,7 @@ func GenerateBootstrapMachines(name string, installConfig *installconfig.Install
 }
 
 // Create a CAPG-specific machine.
-func createGCPMachine(name string, installConfig *installconfig.InstallConfig, infraID string, mpool *gcptypes.MachinePool, imageName string) *capg.GCPMachine {
+func createGCPMachine(name string, installConfig *installconfig.InstallConfig, infraID string, mpool *gcptypes.MachinePool, imageName string) (*capg.GCPMachine, error) {
 	// Use the rhcosImage as image name if not defined
 	var osImage string
 	if mpool.OSImage == nil {
@@ -165,8 +174,29 @@ func createGCPMachine(name string, installConfig *installconfig.InstallConfig, i
 	// value in install-config.
 	// Note - the derivation of the ServiceAccount from credentials will no longer be supported.
 	if len(installConfig.Config.Platform.GCP.NetworkProjectID) > 0 {
-		if mpool.ServiceAccount != "" {
-			serviceAccount.Email = mpool.ServiceAccount
+		serviceAccount.Email = mpool.ServiceAccount
+		if serviceAccount.Email == "" {
+			sess, err := gcpconfig.GetSession(context.TODO())
+			if err != nil {
+				return nil, fmt.Errorf("gcp machine creation failed to get session: %w", err)
+			}
+
+			// The JSON can be `nil` if auth is provided from env
+			// https://pkg.go.dev/golang.org/x/oauth2@v0.17.0/google#Credentials
+			if len(sess.Credentials.JSON) == 0 {
+				return nil, fmt.Errorf("could not extract service account from loaded credentials. Please specify a service account to be used for shared vpc installations in the install-config.yaml")
+			}
+
+			var found bool
+			sa := make(map[string]interface{})
+			err = json.Unmarshal(sess.Credentials.JSON, &sa)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal gcp session: %w", err)
+			}
+			serviceAccount.Email, found = sa["client_email"].(string)
+			if !found {
+				return nil, fmt.Errorf("could not find google service account")
+			}
 		}
 	}
 	gcpMachine.Spec.ServiceAccount = serviceAccount
@@ -184,7 +214,7 @@ func createGCPMachine(name string, installConfig *installconfig.InstallConfig, i
 		gcpMachine.Spec.RootDiskEncryptionKey = encryptionKey
 	}
 
-	return gcpMachine
+	return gcpMachine, nil
 }
 
 // Create a CAPI machine based on the CAPG machine.
