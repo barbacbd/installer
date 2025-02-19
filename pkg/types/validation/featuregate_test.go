@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"github.com/openshift/installer/pkg/types/gcp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -26,6 +27,21 @@ func TestFeatureGates(t *testing.T) {
 				return c
 			}(),
 			expected: `^platform.gcp.userProvisionedDNS: Forbidden: this field is protected by the GCPClusterHostedDNS feature gate which must be enabled through either the TechPreviewNoUpgrade or CustomNoUpgrade feature set$`,
+		},
+		{
+			name: "GCP Custom API Endpoints is not allowed without Feature Gates",
+			installConfig: func() *types.InstallConfig {
+				c := validInstallConfig()
+				c.GCP = validGCPPlatform()
+				c.GCP.ServiceEndpoints = []gcp.ServiceEndpoint{
+					{
+						Name: gcp.ComputeServiceName,
+						URL:  "https://compute.googleapis.com",
+					},
+				}
+				return c
+			}(),
+			expected: `^platform.gcp.serviceEndpoints: Forbidden: this field is protected by the GCPCustomAPIEndpoints feature gate which must be enabled through either the TechPreviewNoUpgrade or CustomNoUpgrade feature set$`,
 		},
 		{
 			name: "AWS UserProvisionedDNS is not allowed without Feature Gates",
