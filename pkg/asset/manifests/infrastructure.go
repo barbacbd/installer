@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 
@@ -36,6 +37,17 @@ import (
 var (
 	infraCfgFilename           = filepath.Join(manifestDir, "cluster-infrastructure-02-config.yml")
 	cloudControllerUIDFilename = filepath.Join(manifestDir, "cloud-controller-uid-config.yml")
+
+	// convert the installer formatted gcp api names to openshift formatted api names.
+	gcpServiceEndpointNameMap = map[string]configv1.GCPServiceEndpointName{
+		gcp.CloudResourceManagerServiceName: configv1.GCPServiceEndpointNameCloudResource,
+		gcp.ComputeServiceName:              configv1.GCPServiceEndpointNameCompute,
+		gcp.DNSServiceName:                  configv1.GCPServiceEndpointNameDNS,
+		gcp.FileServiceName:                 configv1.GCPServiceEndpointNameFile,
+		gcp.IAMServiceName:                  configv1.GCPServiceEndpointNameIAM,
+		gcp.ServiceUsageServiceName:         configv1.GCPServiceEndpointNameServiceUsage,
+		gcp.StorageServiceName:              configv1.GCPServiceEndpointNameStorage,
+	}
 )
 
 // Infrastructure generates the cluster-infrastructure-*.yml files.
@@ -203,6 +215,25 @@ func (i *Infrastructure) Generate(ctx context.Context, dependencies asset.Parent
 			}
 			config.Status.PlatformStatus.GCP.ResourceTags = resourceTags
 		}
+
+		for _, service := range installConfig.Config.Platform.GCP.ServiceEndpoints {
+			var serviceName configv1.GCPServiceEndpointName
+			var ok bool
+			if serviceName, ok = gcpServiceEndpointNameMap[service.Name]; !ok {
+				logrus.Debugf("failed to set GCP service endpoint in infrastructure: %s", service.Name)
+				continue
+			}
+			config.Status.PlatformStatus.GCP.ServiceEndpoints = append(config.Status.PlatformStatus.GCP.ServiceEndpoints, configv1.GCPServiceEndpoint{
+				Name: serviceName,
+				URL:  service.URL,
+			})
+
+			sort.Slice(config.Status.PlatformStatus.GCP.ServiceEndpoints, func(i, j int) bool {
+				return config.Status.PlatformStatus.GCP.ServiceEndpoints[i].Name <
+					config.Status.PlatformStatus.GCP.ServiceEndpoints[j].Name
+			})
+		}
+
 		// If the user has requested the use of a DNS provisioned by them, then OpenShift needs to
 		// start an in-cluster DNS for the installation to succeed. The user can then configure their
 		// DNS post-install.
