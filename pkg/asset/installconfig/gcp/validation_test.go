@@ -111,6 +111,24 @@ var (
 	validateXpnSA            = func(ic *types.InstallConfig) { ic.ControlPlane.Platform.GCP.ServiceAccount = validXpnSA }
 	invalidateXpnSA          = func(ic *types.InstallConfig) { ic.ControlPlane.Platform.GCP.ServiceAccount = invalidXpnSA }
 
+	validServiceEndpoint = func(ic *types.InstallConfig) {
+		ic.GCP.ServiceEndpoints = append(ic.GCP.ServiceEndpoints,
+			gcp.ServiceEndpoint{
+				Name: gcp.ComputeServiceName,
+				URL:  "e2e.local",
+			},
+		)
+	}
+
+	invalidServiceEndpointBadFormat = func(ic *types.InstallConfig) {
+		ic.GCP.ServiceEndpoints = append(ic.GCP.ServiceEndpoints,
+			gcp.ServiceEndpoint{
+				Name: gcp.StorageServiceName,
+				URL:  "http://badstorage.googleapis",
+			},
+		)
+	}
+
 	invalidDefaultMachineKeyRing = func(ic *types.InstallConfig) {
 		ic.GCP.DefaultMachinePlatform = &gcp.MachinePool{}
 		ic.GCP.DefaultMachinePlatform.OSDisk = gcp.OSDisk{
@@ -405,6 +423,17 @@ func TestGCPInstallConfigValidation(t *testing.T) {
 			edits:          editFunctions{validCPKMSKeyRing, invalidateComputeKMSKeyRing, invalidDefaultMachineKeyRing},
 			expectedError:  true,
 			expectedErrMsg: "platform.gcp.compute.encryptionKey.kmsKey.keyRing: Invalid value: \"invalidKeyRingName\": failed to find key ring invalidKeyRingName: data, platform.gcp.defaultMachinePool.encryptionKey.kmsKey.keyRing: Invalid value: \"invalidKeyRingName\": failed to find key ring invalidKeyRingName: data",
+		},
+		{
+			name:          "Valid Service Endpoint Override",
+			edits:         editFunctions{validServiceEndpoint},
+			expectedError: false,
+		},
+		{
+			name:           "Invalid Service Endpoint Override Bad Format",
+			edits:          editFunctions{invalidServiceEndpointBadFormat},
+			expectedError:  true,
+			expectedErrMsg: `[platform.gcp.serviceEndpoint\[0\]: Invalid value: \"http://badstorage.googleapis\": Head \"http://badstorage.googleapis\": dial tcp: lookup badstorage.googleapis: no such host]`,
 		},
 	}
 	mockCtrl := gomock.NewController(t)
