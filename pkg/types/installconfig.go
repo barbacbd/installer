@@ -87,6 +87,19 @@ const (
 	PolicyAlways PolicyType = "Always"
 )
 
+// StackType is used to specify the type of network stack used for the cluser.
+// +kubebuilder:validation:Enum="";IPV4_ONLY;DUAL_STACK;IPV6_ONLY
+type StackType string
+
+const (
+	// IPV4OnlyStackType enables an IPv4 single stack.
+	IPV4OnlyStackType StackType = "IPV4_ONLY"
+	// DualStackStackType enables a stack that allows IPv4 and IPv6 Addresses.
+	DualStackStackType StackType = "DUAL_STACK"
+	// IPV6OnlyStackType enables an IPv6 single stack.
+	IPV6OnlyStackType StackType = "IPV6_ONLY"
+)
+
 //go:generate go run ../../vendor/sigs.k8s.io/controller-tools/cmd/controller-gen crd:crdVersions=v1 paths=. output:dir=../../data/data/
 
 // InstallConfig is the configuration for an OpenShift install.
@@ -224,6 +237,15 @@ type InstallConfig struct {
 	// E.g. "featureGates": ["FeatureGate1=true", "FeatureGate2=false"].
 	// +optional
 	FeatureGates []string `json:"featureGates,omitempty"`
+
+	// stackType specifies the intended network stack type for the cluster.
+	// IPV4OnlyStackType enables an IPv4 single stack.
+	// DualStackStackType enables a stack that allows IPv4 and IPv6 Addresses.
+	// IPV6OnlyStackType enables an IPv6 single stack.
+	//
+	// +kubebuilder:default="IPV4_ONLY"
+	// +optional
+	StackType StackType `json:"stackType,omitempty"`
 }
 
 // ClusterDomain returns the DNS domain that all records for a cluster must belong to.

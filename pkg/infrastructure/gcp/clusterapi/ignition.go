@@ -45,8 +45,11 @@ func editIgnition(ctx context.Context, in clusterapi.IgnitionInput) (*clusterapi
 		project = in.InstallConfig.Config.GCP.NetworkProjectID
 	}
 
+	// TODO: This address parsing will need to change based on what is provided by CAPG
 	apiIntIPAddress := *gcpCluster.Status.Network.APIInternalAddress
 	addressIntCut := apiIntIPAddress[strings.LastIndex(apiIntIPAddress, "/")+1:]
+
+	// TODO: if/when we get the address here we need to verify the stack type vs the address type
 	computeIntAddressObj, err := svc.Addresses.Get(project, in.InstallConfig.Config.GCP.Region, addressIntCut).Context(ctx).Do()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get compute address: %w", err)
@@ -55,8 +58,11 @@ func editIgnition(ctx context.Context, in clusterapi.IgnitionInput) (*clusterapi
 
 	computeAddress := ""
 	if in.InstallConfig.Config.PublicAPI() {
+		// TODO: This address parsing will need to change based on what is provided by CAPG
 		apiIPAddress := *gcpCluster.Status.Network.APIServerAddress
 		addressCut := apiIPAddress[strings.LastIndex(apiIPAddress, "/")+1:]
+
+		// TODO: if/when we get the address here we need to verify the stack type vs the address type
 		computeAddressObj, err := svc.GlobalAddresses.Get(project, addressCut).Context(ctx).Do()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get global compute address: %w", err)

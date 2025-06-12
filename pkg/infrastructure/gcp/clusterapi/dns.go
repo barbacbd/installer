@@ -57,6 +57,8 @@ type recordSet struct {
 
 // createRecordSets will create a list of records that will be created during the install.
 func createRecordSets(ctx context.Context, ic *installconfig.InstallConfig, clusterID, apiIP, apiIntIP string) ([]recordSet, error) {
+	// TODO: create DNS Records need to create the AAAA type not just A Type
+
 	ctx, cancel := context.WithTimeout(ctx, time.Minute*1)
 	defer cancel()
 
@@ -121,6 +123,8 @@ func createRecordSets(ctx context.Context, ic *installconfig.InstallConfig, clus
 
 // createDNSRecords will get the list of records to be created and execute their creation through the gcp dns api.
 func createDNSRecords(ctx context.Context, ic *installconfig.InstallConfig, clusterID, apiIP, apiIntIP string) error {
+	// TODO: create DNS Records need to create the AAAA type not just A Type
+
 	ssn, err := gcpic.GetSession(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get session: %w", err)

@@ -7384,6 +7384,19 @@ spec:
             description: SSHKey is the public Secure Shell (SSH) key to provide access
               to instances.
             type: string
+          stackType:
+            default: IPV4_ONLY
+            description: |-
+              stackType specifies the intended network stack type for the cluster.
+              IPV4OnlyStackType enables an IPv4 single stack.
+              DualStackStackType enables a stack that allows IPv4 and IPv6 Addresses.
+              IPV6OnlyStackType enables an IPv6 single stack.
+            enum:
+            - ""
+            - IPV4_ONLY
+            - DUAL_STACK
+            - IPV6_ONLY
+            type: string
         required:
         - baseDomain
         - metadata

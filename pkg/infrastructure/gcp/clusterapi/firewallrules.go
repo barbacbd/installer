@@ -238,6 +238,8 @@ func hasFirewallPermission(ctx context.Context, projectID string) (bool, error) 
 
 // createFirewallRules creates the rules needed between the worker and master nodes.
 func createFirewallRules(ctx context.Context, in clusterapi.InfraReadyInput, network string) error {
+	// TODO: this entire function needs to change when IPv6 or Dual Stack to use IPv6 strings.
+
 	projectID := in.InstallConfig.Config.Platform.GCP.ProjectID
 	if in.InstallConfig.Config.GCP.NetworkProjectID != "" {
 		projectID = in.InstallConfig.Config.GCP.NetworkProjectID
@@ -334,6 +336,7 @@ func createBootstrapFirewallRules(ctx context.Context, in clusterapi.InfraReadyI
 		}
 	}
 
+	// TODO: this needs to change when IPv6 or Dual Stack to accept IPv6 addresses.
 	firewallName := fmt.Sprintf("%s-bootstrap-in-ssh", in.InfraID)
 	srcTags := []string{}
 	bootstrapTag := fmt.Sprintf("%s-control-plane", in.InfraID)
@@ -342,6 +345,7 @@ func createBootstrapFirewallRules(ctx context.Context, in clusterapi.InfraReadyI
 	if in.InstallConfig.Config.Publish == types.ExternalPublishingStrategy {
 		srcRanges = []string{"0.0.0.0/0"}
 	} else {
+		// TODO: During IPv6 or Dual stack we cannot use the machine network for private clusters.
 		machineCIDR := in.InstallConfig.Config.Networking.MachineNetwork[0].CIDR.String()
 		srcRanges = []string{machineCIDR}
 	}
