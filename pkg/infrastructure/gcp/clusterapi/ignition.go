@@ -36,7 +36,7 @@ func editIgnition(ctx context.Context, in clusterapi.IgnitionInput) (*clusterapi
 		return nil, fmt.Errorf("failed to get GCP cluster: %w", err)
 	}
 
-	svc, err := gcpconfig.GetComputeService(ctx, in.InstallConfig.Config.GCP.ServiceEndpoints)
+	svc, err := gcpconfig.GetComputeService(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"cloud.google.com/go/kms/apiv1/kmspb"
-	"github.com/jarcoal/httpmock"
 	logrusTest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
@@ -22,7 +21,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	configv1 "github.com/openshift/api/config/v1"
 	"github.com/openshift/installer/pkg/asset/installconfig/gcp/mock"
 	"github.com/openshift/installer/pkg/ipnet"
 	"github.com/openshift/installer/pkg/types"
@@ -33,25 +31,23 @@ import (
 type editFunctions []func(ic *types.InstallConfig)
 
 var (
-	validNetworkName          = "valid-vpc"
-	validProjectName          = "valid-project"
-	invalidProjectName        = "invalid-project"
-	validRegion               = "us-east1"
-	invalidRegion             = "us-east4"
-	validZone                 = "us-east1-b"
-	validComputeSubnet        = "valid-compute-subnet"
-	validCPSubnet             = "valid-controlplane-subnet"
-	validCIDR                 = "10.0.0.0/16"
-	validClusterName          = "valid-cluster"
-	validPrivateZone          = "valid-short-private-zone"
-	validPublicZone           = "valid-short-public-zone"
-	invalidPublicZone         = "invalid-short-public-zone"
-	validBaseDomain           = "example.installer.domain."
-	invalidBaseDomain         = "invalid.installer.domain."
-	validXpnSA                = "valid-example-sa@gcloud.serviceaccount.com"
-	invalidXpnSA              = "invalid-example-sa@gcloud.serviceaccount.com"
-	validServiceEndpointURL   = "https://computeexample.googleapis.com/compute/v1/"
-	invalidServiceEndpointURL = "http://badstorage.googleapis"
+	validNetworkName   = "valid-vpc"
+	validProjectName   = "valid-project"
+	invalidProjectName = "invalid-project"
+	validRegion        = "us-east1"
+	invalidRegion      = "us-east4"
+	validZone          = "us-east1-b"
+	validComputeSubnet = "valid-compute-subnet"
+	validCPSubnet      = "valid-controlplane-subnet"
+	validCIDR          = "10.0.0.0/16"
+	validClusterName   = "valid-cluster"
+	validPrivateZone   = "valid-short-private-zone"
+	validPublicZone    = "valid-short-public-zone"
+	invalidPublicZone  = "invalid-short-public-zone"
+	validBaseDomain    = "example.installer.domain."
+	invalidBaseDomain  = "invalid.installer.domain."
+	validXpnSA         = "valid-example-sa@gcloud.serviceaccount.com"
+	invalidXpnSA       = "invalid-example-sa@gcloud.serviceaccount.com"
 
 	// #nosec G101
 	fakeCreds = `{
@@ -118,26 +114,6 @@ var (
 	invalidateXpnSA          = func(ic *types.InstallConfig) { ic.ControlPlane.Platform.GCP.ServiceAccount = invalidXpnSA }
 	invalidateBaseDomain     = func(ic *types.InstallConfig) { ic.BaseDomain = invalidBaseDomain }
 	enableCustomDNS          = func(ic *types.InstallConfig) { ic.GCP.UserProvisionedDNS = customDNS.UserProvisionedDNSEnabled }
-
-	validServiceEndpoint = func(ic *types.InstallConfig) {
-		ic.Publish = types.InternalPublishingStrategy
-		ic.GCP.ServiceEndpoints = append(ic.GCP.ServiceEndpoints,
-			configv1.GCPServiceEndpoint{
-				Name: configv1.GCPServiceEndpointNameCompute,
-				URL:  validServiceEndpointURL,
-			},
-		)
-	}
-
-	invalidServiceEndpointBadFormat = func(ic *types.InstallConfig) {
-		ic.Publish = types.InternalPublishingStrategy
-		ic.GCP.ServiceEndpoints = append(ic.GCP.ServiceEndpoints,
-			configv1.GCPServiceEndpoint{
-				Name: configv1.GCPServiceEndpointNameStorage,
-				URL:  invalidServiceEndpointURL,
-			},
-		)
-	}
 
 	invalidKeyRing = gcp.KMSKeyReference{
 		Name:      "invalidKeyName",
@@ -468,19 +444,6 @@ func TestGCPInstallConfigValidation(t *testing.T) {
 			expectedErrMsg: "platform.gcp.compute.encryptionKey.kmsKey.keyRing: Invalid value: \"invalidKeyRingName\": failed to find key ring invalidKeyRingName: data, platform.gcp.defaultMachinePool.encryptionKey.kmsKey.keyRing: Invalid value: \"invalidKeyRingName\": failed to find key ring invalidKeyRingName: data",
 		},
 		{
-			name:          "Valid Service Endpoint Override",
-			edits:         editFunctions{validServiceEndpoint},
-			records:       []*dns.ResourceRecordSet{{Name: "api.another-cluster-name.example.installer.domain."}},
-			expectedError: false,
-		},
-		{
-			name:           "Invalid Service Endpoint Override Bad Format",
-			edits:          editFunctions{invalidServiceEndpointBadFormat},
-			records:        []*dns.ResourceRecordSet{{Name: "api.another-cluster-name.example.installer.domain."}},
-			expectedError:  true,
-			expectedErrMsg: `[platform.gcp.serviceEndpoint\[0\]: Invalid value: \"http://badstorage.googleapis\": Head \"http://badstorage.googleapis\": dial tcp: lookup badstorage.googleapis: no such host]`,
-		},
-		{
 			name:           "Invalid Base Domain",
 			edits:          editFunctions{invalidateBaseDomain},
 			records:        []*dns.ResourceRecordSet{},
@@ -568,28 +531,6 @@ func TestGCPInstallConfigValidation(t *testing.T) {
 	gcpClient.EXPECT().GetDNSZone(gomock.Any(), validProjectName, validBaseDomain, true).Return(&dns.ManagedZone{Name: validZone}, nil).AnyTimes()
 	gcpClient.EXPECT().GetDNSZone(gomock.Any(), invalidProjectName, validBaseDomain, true).Return(&dns.ManagedZone{Name: validZone}, nil).AnyTimes()
 	gcpClient.EXPECT().GetDNSZone(gomock.Any(), validProjectName, invalidBaseDomain, true).Return(nil, fmt.Errorf("baseDomain: Not found: \"%s\"", invalidBaseDomain)).AnyTimes()
-
-	httpmock.Activate()
-	defer httpmock.DeactivateAndReset()
-
-	httpmock.RegisterResponder("HEAD", validServiceEndpointURL,
-		func(req *http.Request) (*http.Response, error) {
-			if req.Method != http.MethodHead {
-				return httpmock.NewStringResponse(http.StatusMethodNotAllowed, ""), nil
-			}
-			return httpmock.NewStringResponse(http.StatusOK, ""), nil
-		},
-	)
-
-	httpmock.RegisterResponder("HEAD", invalidServiceEndpointURL,
-		func(req *http.Request) (*http.Response, error) {
-			return nil,
-				fmt.Errorf("Head %s: dial tcp: lookup %s: no such host",
-					invalidServiceEndpointURL,
-					strings.ReplaceAll(invalidServiceEndpointURL, "http://", ""),
-				)
-		},
-	)
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

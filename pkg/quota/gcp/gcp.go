@@ -13,7 +13,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	configv1 "github.com/openshift/api/config/v1"
 	gcpconfig "github.com/openshift/installer/pkg/asset/installconfig/gcp"
 	"github.com/openshift/installer/pkg/quota"
 )
@@ -21,7 +20,7 @@ import (
 // Load load the quota information for a project and provided services. It provides information
 // about the usage and limit for each resource quota.
 // roles/servicemanagement.quotaViewer role allows users to fetch the required details.
-func Load(ctx context.Context, project string, serviceEndpoints []configv1.GCPServiceEndpoint, services ...string) ([]quota.Quota, error) {
+func Load(ctx context.Context, project string, services ...string) ([]quota.Quota, error) {
 	ssn, err := gcpconfig.GetSession(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get session")
@@ -30,7 +29,7 @@ func Load(ctx context.Context, project string, serviceEndpoints []configv1.GCPSe
 	options := []option.ClientOption{
 		option.WithCredentials(ssn.Credentials),
 	}
-	servicesSvc, err := gcpconfig.GetServiceUsageService(ctx, serviceEndpoints)
+	servicesSvc, err := gcpconfig.GetServiceUsageService(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create services svc")
 	}

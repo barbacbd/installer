@@ -34,7 +34,7 @@ type global struct {
 }
 
 // CloudProviderConfig generates the cloud provider config for the GCP platform.
-func CloudProviderConfig(infraID, projectID, subnet, networkProjectID, apiEndpoint, containerAPIEndpoint string) (string, error) {
+func CloudProviderConfig(infraID, projectID, subnet, networkProjectID string) (string, error) {
 	config := &config{
 		Global: global{
 			ProjectID: projectID,
@@ -54,10 +54,6 @@ func CloudProviderConfig(infraID, projectID, subnet, networkProjectID, apiEndpoi
 
 			// Used for shared vpc installations,
 			NetworkProjectID: networkProjectID,
-
-			// Used for api endpoint overrides in the cloud provider.
-			APIEndpoint:          apiEndpoint,
-			ContainerAPIEndpoint: containerAPIEndpoint,
 		},
 	}
 

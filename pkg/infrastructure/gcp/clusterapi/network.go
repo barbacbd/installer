@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	configv1 "github.com/openshift/api/config/v1"
 	gcpconfig "github.com/openshift/installer/pkg/asset/installconfig/gcp"
 )
 
@@ -12,8 +11,8 @@ func getAPIAddressName(infraID string) string {
 	return fmt.Sprintf("%s-api-internal", infraID)
 }
 
-func getInternalLBAddress(ctx context.Context, project, region, name string, endpoints []configv1.GCPServiceEndpoint) (string, error) {
-	service, err := gcpconfig.GetComputeService(ctx, endpoints)
+func getInternalLBAddress(ctx context.Context, project, region, name string) (string, error) {
+	service, err := gcpconfig.GetComputeService(ctx)
 	if err != nil {
 		return "", err
 	}

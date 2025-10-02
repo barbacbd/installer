@@ -16,7 +16,7 @@ import (
 
 // GetBaseDomain returns a base domain chosen from among the project's public DNS zones.
 func GetBaseDomain(project string, endpoints []configv1.GCPServiceEndpoint) (string, error) {
-	client, err := NewClient(context.TODO(), endpoints)
+	client, err := NewClient(context.TODO())
 	if err != nil {
 		return "", err
 	}
