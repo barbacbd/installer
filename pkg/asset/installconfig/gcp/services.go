@@ -1,9 +1,10 @@
 package gcp
 
 import (
-	"cloud.google.com/go/storage"
 	"context"
 	"fmt"
+
+	"cloud.google.com/go/storage"
 	"google.golang.org/api/cloudresourcemanager/v3"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/dns/v1"
