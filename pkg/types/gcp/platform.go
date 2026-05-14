@@ -126,6 +126,44 @@ type Platform struct {
 	// and the firewall rules before the installation.
 	// +optional
 	FirewallRulesManagement FirewallRulesManagementPolicy `json:"firewallRulesManagement,omitempty"`
+
+	// Ignition contains configuration for the Ignition bootstrap process.
+	// +optional
+	Ignition *Ignition `json:"ignition,omitempty"`
+
+	// Registry contains configuration for the internal image registry.
+	// +optional
+	Registry *Registry `json:"registry,omitempty"`
+}
+
+// Ignition contains configuration for the Ignition bootstrap process.
+type Ignition struct {
+	// Storage contains storage configuration for Ignition.
+	// +optional
+	Storage *IgnitionStorage `json:"storage,omitempty"`
+}
+
+// IgnitionStorage contains storage configuration for Ignition.
+type IgnitionStorage struct {
+	// EncryptionKey is the KMS key to use for encrypting the storage bucket
+	// that contains the Ignition bootstrap configuration.
+	// +optional
+	EncryptionKey *StorageEncryptionKeyReference `json:"encryptionKey,omitempty"`
+}
+
+// Registry contains configuration for the internal image registry.
+type Registry struct {
+	// Storage contains storage configuration for the registry.
+	// +optional
+	Storage *RegistryStorage `json:"storage,omitempty"`
+}
+
+// RegistryStorage contains storage configuration for the internal image registry.
+type RegistryStorage struct {
+	// EncryptionKey is the KMS key to use for encrypting the storage bucket
+	// that contains the internal image registry data.
+	// +optional
+	EncryptionKey *StorageEncryptionKeyReference `json:"encryptionKey,omitempty"`
 }
 
 // UserLabel is a label to apply to GCP resources created for the cluster.

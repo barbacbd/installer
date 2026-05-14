@@ -6616,6 +6616,54 @@ spec:
                     - Managed
                     - Unmanaged
                     type: string
+                  ignition:
+                    description: Ignition contains configuration for the Ignition
+                      bootstrap process.
+                    properties:
+                      storage:
+                        description: Storage contains storage configuration for Ignition.
+                        properties:
+                          encryptionKey:
+                            description: |-
+                              EncryptionKey is the KMS key to use for encrypting the storage bucket
+                              that contains the Ignition bootstrap configuration.
+                            properties:
+                              kmsKey:
+                                description: KMSKey is a reference to a KMS Key to
+                                  use for the encryption.
+                                properties:
+                                  keyRing:
+                                    description: KeyRing is the name of the KMS Key
+                                      Ring which the KMS Key belongs to.
+                                    type: string
+                                  location:
+                                    description: Location is the GCP location in which
+                                      the Key Ring exists.
+                                    type: string
+                                  name:
+                                    description: Name is the name of the customer
+                                      managed encryption key to be used for the disk
+                                      encryption.
+                                    type: string
+                                  projectID:
+                                    description: |-
+                                      ProjectID is the ID of the Project in which the KMS Key Ring exists.
+                                      Defaults to the VM ProjectID if not set.
+                                    type: string
+                                required:
+                                - keyRing
+                                - location
+                                - name
+                                type: object
+                              kmsKeyServiceAccount:
+                                description: |-
+                                  KMSKeyServiceAccount is the service account being used for the
+                                  encryption request for the given KMS key. If absent, the default
+                                  service account for the storage service is used.
+                                type: string
+                            type: object
+                        type: object
+                    type: object
                   network:
                     description: |-
                       Network specifies an existing VPC where the cluster should be created
@@ -6634,6 +6682,55 @@ spec:
                     description: Region specifies the GCP region where the cluster
                       will be created.
                     type: string
+                  registry:
+                    description: Registry contains configuration for the internal
+                      image registry.
+                    properties:
+                      storage:
+                        description: Storage contains storage configuration for the
+                          registry.
+                        properties:
+                          encryptionKey:
+                            description: |-
+                              EncryptionKey is the KMS key to use for encrypting the storage bucket
+                              that contains the internal image registry data.
+                            properties:
+                              kmsKey:
+                                description: KMSKey is a reference to a KMS Key to
+                                  use for the encryption.
+                                properties:
+                                  keyRing:
+                                    description: KeyRing is the name of the KMS Key
+                                      Ring which the KMS Key belongs to.
+                                    type: string
+                                  location:
+                                    description: Location is the GCP location in which
+                                      the Key Ring exists.
+                                    type: string
+                                  name:
+                                    description: Name is the name of the customer
+                                      managed encryption key to be used for the disk
+                                      encryption.
+                                    type: string
+                                  projectID:
+                                    description: |-
+                                      ProjectID is the ID of the Project in which the KMS Key Ring exists.
+                                      Defaults to the VM ProjectID if not set.
+                                    type: string
+                                required:
+                                - keyRing
+                                - location
+                                - name
+                                type: object
+                              kmsKeyServiceAccount:
+                                description: |-
+                                  KMSKeyServiceAccount is the service account being used for the
+                                  encryption request for the given KMS key. If absent, the default
+                                  service account for the storage service is used.
+                                type: string
+                            type: object
+                        type: object
+                    type: object
                   userLabels:
                     description: |-
                       userLabels has additional keys and values that the installer will add as
