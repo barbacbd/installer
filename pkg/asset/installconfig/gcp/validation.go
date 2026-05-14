@@ -861,12 +861,19 @@ func validateUserTags(client API, projectID string, userTags []gcp.UserTag) erro
 
 // validateKMSKeyReference validates a KMS key reference by checking if the key ring exists.
 // Returns a field.Error on failure, or nil on success.
-func validateKMSKeyReference(client API, kmsKeyRef *gcp.KMSKeyReference, fldPath *field.Path) *field.Error {
+// The defaultProjectID is used if the kmsKeyRef.ProjectID is empty.
+func validateKMSKeyReference(client API, kmsKeyRef *gcp.KMSKeyReference, defaultProjectID string, fldPath *field.Path) *field.Error {
 	if kmsKeyRef == nil {
 		return nil
 	}
 
-	if _, err := client.GetKeyRing(context.TODO(), kmsKeyRef); err != nil {
+	// Create a copy with the project ID filled in if not specified
+	kmsKeyRefCopy := *kmsKeyRef
+	if kmsKeyRefCopy.ProjectID == "" {
+		kmsKeyRefCopy.ProjectID = defaultProjectID
+	}
+
+	if _, err := client.GetKeyRing(context.TODO(), &kmsKeyRefCopy); err != nil {
 		return field.Invalid(fldPath.Child("keyRing"), kmsKeyRef.KeyRing, err.Error())
 	}
 	return nil
@@ -880,7 +887,7 @@ func validatePlatformKMSKeys(client API, ic *types.InstallConfig, fieldPath *fie
 	cp := ic.ControlPlane
 	validatedControlPlaneKey := false
 	if cp != nil && cp.Platform.GCP != nil && cp.Platform.GCP.EncryptionKey != nil && cp.Platform.GCP.EncryptionKey.KMSKey != nil {
-		if err := validateKMSKeyReference(client, cp.Platform.GCP.OSDisk.EncryptionKey.KMSKey, fieldPath.Child("controlPlane").Child("encryptionKey").Child("kmsKey")); err != nil {
+		if err := validateKMSKeyReference(client, cp.Platform.GCP.OSDisk.EncryptionKey.KMSKey, ic.GCP.ProjectID, fieldPath.Child("controlPlane").Child("encryptionKey").Child("kmsKey")); err != nil {
 			return append(allErrs, err)
 		}
 		validatedControlPlaneKey = true
@@ -889,7 +896,7 @@ func validatePlatformKMSKeys(client API, ic *types.InstallConfig, fieldPath *fie
 	validatedComputeKeys := false
 	for _, mp := range ic.Compute {
 		if mp.Platform.GCP != nil && mp.Platform.GCP.EncryptionKey != nil && mp.Platform.GCP.EncryptionKey.KMSKey != nil {
-			if err := validateKMSKeyReference(client, mp.Platform.GCP.OSDisk.EncryptionKey.KMSKey, fieldPath.Child("compute").Child("encryptionKey").Child("kmsKey")); err != nil {
+			if err := validateKMSKeyReference(client, mp.Platform.GCP.OSDisk.EncryptionKey.KMSKey, ic.GCP.ProjectID, fieldPath.Child("compute").Child("encryptionKey").Child("kmsKey")); err != nil {
 				allErrs = append(allErrs, err)
 			} else {
 				validatedComputeKeys = true
@@ -899,7 +906,7 @@ func validatePlatformKMSKeys(client API, ic *types.InstallConfig, fieldPath *fie
 
 	defaultMp := ic.GCP.DefaultMachinePlatform
 	if defaultMp != nil && defaultMp.EncryptionKey != nil && defaultMp.EncryptionKey.KMSKey != nil {
-		if err := validateKMSKeyReference(client, defaultMp.EncryptionKey.KMSKey, fieldPath.Child("defaultMachinePool").Child("encryptionKey").Child("kmsKey")); err != nil {
+		if err := validateKMSKeyReference(client, defaultMp.EncryptionKey.KMSKey, ic.GCP.ProjectID, fieldPath.Child("defaultMachinePool").Child("encryptionKey").Child("kmsKey")); err != nil {
 			if validatedControlPlaneKey && (validatedComputeKeys && len(allErrs) == 0) {
 				logrus.Warn("defaultMachinePool.encryptionKey.KMSKey.KeyRing is not valid, but compute and control plane key rings are valid")
 			} else {
@@ -918,7 +925,7 @@ func validateStorageEncryptionKeys(client API, ic *types.InstallConfig, fieldPat
 
 	// Validate Ignition storage encryption key
 	if ic.GCP.Ignition != nil && ic.GCP.Ignition.Storage != nil && ic.GCP.Ignition.Storage.EncryptionKey != nil {
-		if err := validateKMSKeyReference(client, ic.GCP.Ignition.Storage.EncryptionKey.KMSKey, fieldPath.Child("ignition").Child("storage").Child("encryptionKey").Child("kmsKey")); err != nil {
+		if err := validateKMSKeyReference(client, ic.GCP.Ignition.Storage.EncryptionKey.KMSKey, ic.GCP.ProjectID, fieldPath.Child("ignition").Child("storage").Child("encryptionKey").Child("kmsKey")); err != nil {
 			// Log warning instead of error to handle permission failures gracefully
 			logrus.Warnf("Failed to validate Ignition storage encryption key: %v", err.ErrorBody())
 		}
@@ -926,7 +933,7 @@ func validateStorageEncryptionKeys(client API, ic *types.InstallConfig, fieldPat
 
 	// Validate Registry storage encryption key
 	if ic.GCP.Registry != nil && ic.GCP.Registry.Storage != nil && ic.GCP.Registry.Storage.EncryptionKey != nil {
-		if err := validateKMSKeyReference(client, ic.GCP.Registry.Storage.EncryptionKey.KMSKey, fieldPath.Child("registry").Child("storage").Child("encryptionKey").Child("kmsKey")); err != nil {
+		if err := validateKMSKeyReference(client, ic.GCP.Registry.Storage.EncryptionKey.KMSKey, ic.GCP.ProjectID, fieldPath.Child("registry").Child("storage").Child("encryptionKey").Child("kmsKey")); err != nil {
 			// Log warning instead of error to handle permission failures gracefully
 			logrus.Warnf("Failed to validate Registry storage encryption key: %v", err.ErrorBody())
 		}
