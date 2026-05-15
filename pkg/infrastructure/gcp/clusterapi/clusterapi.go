@@ -81,6 +81,18 @@ func (p Provider) PreProvision(ctx context.Context, in clusterapi.PreProvisionIn
 			}
 		}
 
+		// Grant Compute Engine service account permission to use OS disk KMS key if configured.
+		// The Compute Engine service account (not the instance service account) performs disk encryption.
+		if controlPlaneMpool.OSDisk.EncryptionKey != nil && controlPlaneMpool.OSDisk.EncryptionKey.KMSKey != nil {
+			computeEngineSA, err := GetComputeEngineServiceAccount(ctx, projectID, in.InstallConfig.Config.GCP.Endpoint)
+			if err != nil {
+				return fmt.Errorf("failed to get Compute Engine service account: %w", err)
+			}
+			if err = GrantKMSKeyIAMPermission(ctx, controlPlaneMpool.OSDisk.EncryptionKey.KMSKey, projectID, computeEngineSA, "roles/cloudkms.cryptoKeyEncrypterDecrypter"); err != nil {
+				return fmt.Errorf("failed to grant Compute Engine SA permission on control plane OS disk KMS key: %w", err)
+			}
+		}
+
 		// Add additional roles for shared VPC
 		if len(in.InstallConfig.Config.Platform.GCP.NetworkProjectID) > 0 {
 			projID := in.InstallConfig.Config.Platform.GCP.NetworkProjectID
@@ -109,6 +121,54 @@ func (p Provider) PreProvision(ctx context.Context, in clusterapi.PreProvisionIn
 		}
 		if err = AddServiceAccountRoles(ctx, projectID, workerSA, GetWorkerRoles(), in.InstallConfig.Config.GCP.Endpoint); err != nil {
 			return fmt.Errorf("failed to add worker roles: %w", err)
+		}
+	}
+
+	// Grant Compute Engine service account permission to use OS disk KMS keys for compute nodes if configured.
+	for _, compute := range in.InstallConfig.Config.Compute {
+		computeMpool := &gcptypes.MachinePool{}
+		computeMpool.Set(in.InstallConfig.Config.GCP.DefaultMachinePlatform)
+		computeMpool.Set(compute.Platform.GCP)
+
+		if computeMpool.OSDisk.EncryptionKey != nil && computeMpool.OSDisk.EncryptionKey.KMSKey != nil {
+			computeEngineSA, err := GetComputeEngineServiceAccount(ctx, projectID, in.InstallConfig.Config.GCP.Endpoint)
+			if err != nil {
+				return fmt.Errorf("failed to get Compute Engine service account: %w", err)
+			}
+			if err = GrantKMSKeyIAMPermission(ctx, computeMpool.OSDisk.EncryptionKey.KMSKey, projectID, computeEngineSA, "roles/cloudkms.cryptoKeyEncrypterDecrypter"); err != nil {
+				return fmt.Errorf("failed to grant Compute Engine SA permission on compute OS disk KMS key: %w", err)
+			}
+			// Only need to grant permission once per key, so break after first iteration
+			break
+		}
+	}
+
+	// Grant Cloud Storage service account permissions to use KMS keys for bucket encryption.
+	// The Cloud Storage service account performs server-side encryption/decryption of bucket data.
+	if needsKMSPermissions(in.InstallConfig.Config.GCP) {
+		cloudStorageSA, err := GetCloudStorageServiceAccount(ctx, projectID, in.InstallConfig.Config.GCP.Endpoint)
+		if err != nil {
+			return fmt.Errorf("failed to get Cloud Storage service account: %w", err)
+		}
+
+		// Grant permission for ignition storage KMS key
+		if platform.Ignition != nil &&
+			platform.Ignition.Storage != nil &&
+			platform.Ignition.Storage.EncryptionKey != nil &&
+			platform.Ignition.Storage.EncryptionKey.KMSKey != nil {
+			if err = GrantKMSKeyIAMPermission(ctx, platform.Ignition.Storage.EncryptionKey.KMSKey, projectID, cloudStorageSA, "roles/cloudkms.cryptoKeyEncrypterDecrypter"); err != nil {
+				return fmt.Errorf("failed to grant Cloud Storage SA permission on ignition KMS key: %w", err)
+			}
+		}
+
+		// Grant permission for registry storage KMS key
+		if platform.Registry != nil &&
+			platform.Registry.Storage != nil &&
+			platform.Registry.Storage.EncryptionKey != nil &&
+			platform.Registry.Storage.EncryptionKey.KMSKey != nil {
+			if err = GrantKMSKeyIAMPermission(ctx, platform.Registry.Storage.EncryptionKey.KMSKey, projectID, cloudStorageSA, "roles/cloudkms.cryptoKeyEncrypterDecrypter"); err != nil {
+				return fmt.Errorf("failed to grant Cloud Storage SA permission on registry KMS key: %w", err)
+			}
 		}
 	}
 
