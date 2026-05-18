@@ -55,12 +55,9 @@ func CreateStorage(ctx context.Context, ic *installconfig.InstallConfig, bucketH
 		Labels:   labels,
 	}
 
-	// Add customer-managed KMS encryption if configured
-	if ic.Config.GCP.Ignition != nil &&
-		ic.Config.GCP.Ignition.Storage != nil &&
-		ic.Config.GCP.Ignition.Storage.EncryptionKey != nil &&
-		ic.Config.GCP.Ignition.Storage.EncryptionKey.KMSKey != nil {
-		kmsKeyPath := formatKMSKeyResourcePath(ic.Config.GCP.Ignition.Storage.EncryptionKey.KMSKey, ic.Config.GCP.ProjectID)
+	// Add customer-managed KMS encryption if configured via defaultMachinePlatform
+	if kmsKey := gcptypes.GetStorageKMSKey(ic.Config.GCP); kmsKey != nil {
+		kmsKeyPath := formatKMSKeyResourcePath(kmsKey, ic.Config.GCP.ProjectID)
 		bucketAttrs.Encryption = &storage.BucketEncryption{
 			DefaultKMSKeyName: kmsKeyPath,
 		}

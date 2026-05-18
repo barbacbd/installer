@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -1572,128 +1573,21 @@ func TestValidateMarketplaceImages(t *testing.T) {
 				assert.Empty(t, errs)
 			}
 			if len(tc.expectedWarnMsg) > 0 {
-				assert.Regexp(t, tc.expectedWarnMsg, hook.LastEntry().Message)
+				// Check that at least one entry matches the expected warning
+				found := false
+				for _, entry := range hook.AllEntries() {
+					matched, err := regexp.MatchString(tc.expectedWarnMsg, entry.Message)
+					assert.NoError(t, err, "Invalid regex pattern: %s", tc.expectedWarnMsg)
+					if matched {
+						found = true
+						break
+					}
+				}
+				assert.True(t, found, "Expected warning message not found: %s", tc.expectedWarnMsg)
 			}
 		})
 	}
 }
 
-func TestValidateStorageEncryptionKeys(t *testing.T) {
-	validIgnitionStorageKey := func(ic *types.InstallConfig) {
-		ic.GCP.Ignition = &gcp.Ignition{
-			Storage: &gcp.IgnitionStorage{
-				EncryptionKey: &gcp.StorageEncryptionKeyReference{
-					KMSKey: &validKeyRing,
-				},
-			},
-		}
-	}
-	invalidIgnitionStorageKey := func(ic *types.InstallConfig) {
-		ic.GCP.Ignition = &gcp.Ignition{
-			Storage: &gcp.IgnitionStorage{
-				EncryptionKey: &gcp.StorageEncryptionKeyReference{
-					KMSKey: &invalidKeyRing,
-				},
-			},
-		}
-	}
-	validRegistryStorageKey := func(ic *types.InstallConfig) {
-		ic.GCP.Registry = &gcp.Registry{
-			Storage: &gcp.RegistryStorage{
-				EncryptionKey: &gcp.StorageEncryptionKeyReference{
-					KMSKey: &validKeyRing,
-				},
-			},
-		}
-	}
-	invalidRegistryStorageKey := func(ic *types.InstallConfig) {
-		ic.GCP.Registry = &gcp.Registry{
-			Storage: &gcp.RegistryStorage{
-				EncryptionKey: &gcp.StorageEncryptionKeyReference{
-					KMSKey: &invalidKeyRing,
-				},
-			},
-		}
-	}
-
-	cases := []struct {
-		name            string
-		edits           editFunctions
-		expectedWarnMsg string // Storage key validation uses warnings instead of errors
-	}{
-		{
-			name:            "Valid ignition storage encryption key",
-			edits:           editFunctions{validIgnitionStorageKey},
-			expectedWarnMsg: "",
-		},
-		{
-			name:            "Invalid ignition storage encryption key",
-			edits:           editFunctions{invalidIgnitionStorageKey},
-			expectedWarnMsg: "Failed to validate Ignition storage encryption key.*invalidKeyRingName",
-		},
-		{
-			name:            "Valid registry storage encryption key",
-			edits:           editFunctions{validRegistryStorageKey},
-			expectedWarnMsg: "",
-		},
-		{
-			name:            "Invalid registry storage encryption key",
-			edits:           editFunctions{invalidRegistryStorageKey},
-			expectedWarnMsg: "Failed to validate Registry storage encryption key.*invalidKeyRingName",
-		},
-		{
-			name:            "Valid ignition and registry storage encryption keys",
-			edits:           editFunctions{validIgnitionStorageKey, validRegistryStorageKey},
-			expectedWarnMsg: "",
-		},
-		{
-			name:            "Invalid ignition and valid registry storage encryption keys",
-			edits:           editFunctions{invalidIgnitionStorageKey, validRegistryStorageKey},
-			expectedWarnMsg: "Failed to validate Ignition storage encryption key.*invalidKeyRingName",
-		},
-		{
-			name:            "Valid ignition and invalid registry storage encryption keys",
-			edits:           editFunctions{validIgnitionStorageKey, invalidRegistryStorageKey},
-			expectedWarnMsg: "Failed to validate Registry storage encryption key.*invalidKeyRingName",
-		},
-		{
-			name:            "Invalid ignition and invalid registry storage encryption keys",
-			edits:           editFunctions{invalidIgnitionStorageKey, invalidRegistryStorageKey},
-			expectedWarnMsg: "Failed to validate (Ignition|Registry) storage encryption key.*invalidKeyRingName",
-		},
-	}
-
-	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
-
-	gcpClient := mock.NewMockAPI(mockCtrl)
-
-	validKeyRingRet := &kmspb.KeyRing{
-		Name: "validKeyRingName",
-	}
-	gcpClient.EXPECT().GetKeyRing(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, kmsKeyRef *gcp.KMSKeyReference) (*kmspb.KeyRing, error) {
-		if kmsKeyRef.KeyRing == "validKeyRingName" {
-			return validKeyRingRet, nil
-		}
-		return nil, fmt.Errorf("failed to find key ring invalidKeyRingName: data")
-	}).AnyTimes()
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			editedInstallConfig := validInstallConfig()
-			for _, edit := range tc.edits {
-				edit(editedInstallConfig)
-			}
-
-			hook := logrusTest.NewGlobal()
-			_ = validateStorageEncryptionKeys(gcpClient, editedInstallConfig, field.NewPath("platform", "gcp"))
-
-			if tc.expectedWarnMsg != "" {
-				assert.Regexp(t, tc.expectedWarnMsg, hook.LastEntry().Message)
-			} else if hook.LastEntry() != nil {
-				// Make sure we don't get unexpected warnings
-				assert.NotContains(t, hook.LastEntry().Message, "Failed to validate")
-			}
-		})
-	}
-}
+// TestValidateStorageEncryptionKeys removed - storage encryption is now configured
+// via defaultMachinePlatform.osDisk.encryptionKey.kmsKey and validated in TestValidatePlatformKMSKeys
